@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.0/css/bootstrap.min.css" integrity="sha384-9gVQ4dYFwwWSjIDZnLEWnxCjeSWFphJiwGPXr1jddIhOegiu1FwO5qRGvFXOdJZ4" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+    <style>
+        .my-bg-error {
+            background-color: #fcc;
+        }
+
+        .my-bg-ok {
+            background-color: #cfc;
+        }
+
+        .my-table {
+            font-size: 0.6em;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <header>
+            <div class="navbar navbar-dark bg-dark shadow-sm">
+                <div class="container d-flex justify-content-between">
+                    <a :href="pageUrl" class="navbar-brand d-flex align-items-center">
+                        <i class="material-icons">attach_money</i>
+                        <strong>Hello Culqi</strong>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <div class="container mt-2">
+                <div class="card-deck mb-3 text-center">
+                    <div class="card mb-4 shadow-sm" v-for="item in products">
+                        <div class="card-header">
+                            <h4 class="my-0 font-weight-normal">{{ item.name }}</h4>
+                        </div>
+                        <div class="card-body">
+                            <h1 class="card-title pricing-card-title">{{ item.price }} PEN</h1>
+                            <p>{{ item.description }}</p>
+                            <button type="button" class="btn btn-lg btn-block btn-outline-primary" @click="pay(item)">Pagar</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+    <script src="https://checkout.culqi.com/js/v3"></script>
+
+    <script>
+        // REF
+        // https://www.paypalobjects.com/en_GB/vhelp/paypalmanager_help/credit_card_numbers.htm
+        // http://www.getcreditcardnumbers.com/
+
+        console.log('global Culqi', Culqi);
+
+        const app = new Vue({
+            el: '#app',
+            data: function () {
+                return {
+                    pageUrl: window.location.href,
+                    Culqi: null,
+                    products: [
+                        {
+                            name: 'Producto A',
+                            description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit.',
+                            price: 3,
+                        },
+                        {
+                            name: 'Producto B',
+                            description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit.',
+                            price: 4,
+                        },
+                        {
+                            name: 'Producto C',
+                            description: 'Lorem ipsum dolor sit amet, consectetur adipisicing elit.',
+                            price: 5,
+                        },
+                    ]
+                };
+            },
+            created: function () {
+                console.log('created');
+                this.Culqi = window.Culqi;
+                this.Culqi.publicKey = 'pk_test_e85SD7RVrWlW0u7z';
+                console.log('app Culqi', this.Culqi);
+            },
+            methods: {
+                pay: function (item) {
+                    this.Culqi.settings({
+                        title: 'Hello Culqi',
+                        currency: 'PEN',
+                        description: item.name,
+                        amount: item.price * 100,
+                    });
+
+                    this.Culqi.open();
+                },
+                charge: async function (data) {
+                    const url = 'https://api.culqi.com/v2/charges';
+                    const headers = {
+                        Accept: "application/json, text/plain, */*",
+                        "Content-Type": "application/json",
+                        Authorization: this.Culqi.token
+                    };
+                    const method = 'POST';
+                    let result;
+                    try {
+                        const _result = await axios({ url, method, headers, data });
+                        if (_result.statusText === 'OK') {
+                            result = _result.data;
+                        }
+                        return result;
+                    } catch (error) {
+                        throw error;
+                    }
+                },
+                culqi: async function () {
+                    console.log('culqi()');
+                    if (this.Culqi.token) { // ¡Objeto Token creado exitosamente!
+                        const token = this.Culqi.token.id;
+                        console.log('Culqi', this.Culqi);
+                        console.log('Culqi.token', this.Culqi.token);
+                        console.log('Se ha creado un token:' + token);
+
+                        const settings = this.Culqi.settings;
+                        const data = {
+                            amount: settings.amount,
+                            currency_code: settings.currency,
+                            email: this.Culqi.token.email,
+                            source_id: this.Culqi.publicKey
+                        };
+                        const change = await this.charge(data);
+                        console.log('charge', charge);
+                    } else { // ¡Hubo algún problema!
+                        // Mostramos JSON de objeto error en consola
+                        console.log('Culqi.error', this.Culqi.error);
+                        console.log(this.Culqi.error.user_message);
+                        // Ejemplo de error:
+                        // { object: "error", type: "card_error", merchant_message: "Hemos detectado que estas intentando tokenizar una…Realiza nuevamente tu petición con estas llaves. ", user_message: " ¡Uh! Tu tarjeta fue rechazada. Estás utilizando una tarjeta real para procesar pagos de prueba. " }
+                    }
+                },
+            }
+        });
+
+        const culqi = app.culqi;
+
+
+    </script>
+</body>
+
+</html>
